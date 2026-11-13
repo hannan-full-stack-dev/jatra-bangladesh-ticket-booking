@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html { scroll-padding-top: 6rem; }
+body { @apply bg-ivory font-sans text-ink antialiased; overflow-x: clip; }
+::selection { background: #C8A24A; color: #14211B; }
+:focus-visible { outline: 2px solid #C8A24A; outline-offset: 2px; }
+input:focus-visible, select:focus-visible { outline: none; }
+
+.grid-lines {
+  background-image:
+    linear-gradient(rgba(246,241,231,.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(246,241,231,.05) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* Only the ticket is printed. */
+@media print {
+  body * { visibility: hidden; }
+  .print-ticket, .print-ticket * { visibility: visible; }
+  .print-ticket { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none; }
+}
