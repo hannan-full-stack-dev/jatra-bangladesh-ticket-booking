@@ -4,8 +4,9 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        display: ['Fraunces', 'Georgia', 'serif'],
-        sans: ['Inter', 'Hind Siliguri', 'system-ui', 'sans-serif'],
+        display: ['"Bricolage Grotesque"', '"Anek Bangla"', 'system-ui', 'sans-serif'],
+        sans: ['Figtree', '"Anek Bangla"', 'system-ui', 'sans-serif'],
+        mono: ['"DM Mono"', 'ui-monospace', 'monospace'],
       },
       colors: {
         ivory: '#F6F1E7', paper: '#FFFDF8', ink: '#14211B', mute: '#667064', line: '#E6DFCF',
@@ -15,10 +16,7 @@ export default {
       },
       boxShadow: {
         lift: '0 1px 2px rgba(20,33,27,.06), 0 14px 32px -14px rgba(20,33,27,.28)',
-        glow: '0 0 0 1px rgba(200,162,74,.7), 0 8px 24px -4px rgba(200,162,74,.55)',
       },
-      keyframes: { shimmer: { '100%': { transform: 'translateX(100%)' } } },
-      animation: { shimmer: 'shimmer 1.6s infinite' },
     },
   },
 }

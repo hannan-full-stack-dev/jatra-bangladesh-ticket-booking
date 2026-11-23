@@ -14,9 +14,9 @@ const SCREENS = { search: SearchScreen, results: ResultsScreen, seats: SeatScree
 
 /** Screens slide in the direction you are travelling: forward from the right, back from the left. */
 const page = {
-  enter: (direction) => ({ opacity: 0, x: 40 * direction, filter: 'blur(4px)' }),
-  center: { opacity: 1, x: 0, filter: 'blur(0px)' },
-  exit: (direction) => ({ opacity: 0, x: -40 * direction, filter: 'blur(4px)' }),
+  enter: (direction) => ({ opacity: 0, x: 24 * direction }),
+  center: { opacity: 1, x: 0 },
+  exit: (direction) => ({ opacity: 0, x: -24 * direction }),
 }
 
 function Toast({ message, onClose }) {
@@ -106,12 +106,10 @@ export default function App() {
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-20 border-b border-line/70 bg-ivory/80 backdrop-blur-md">
+      <header className="sticky top-0 z-20 border-b border-line bg-ivory">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 md:px-6">
           <button onClick={() => dispatch({ type: 'RESET' })} aria-label="Jatra, start over"><Logo /></button>
-          <span className="rounded-full border border-line bg-paper px-3 py-1 text-xs font-medium text-mute">
-            Portfolio demo · no real payments
-          </span>
+          <span className="text-sm text-mute">Demo, no real payments</span>
         </div>
       </header>
 

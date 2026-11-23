@@ -6,7 +6,7 @@ import FareBreakdown from '@/components/FareBreakdown'
 import HoldRing from '@/components/HoldRing'
 import SeatMap from '@/components/SeatMap'
 import SegmentedControl from '@/components/SegmentedControl'
-import { cityById } from '@/data/cities'
+import { placeById } from '@/data/cities'
 import { bookedSeatsFor } from '@/data/trips'
 import { useHoldTimer } from '@/hooks/useHoldTimer'
 import { formatClock, formatDate, formatMoney } from '@/lib/format'
@@ -40,7 +40,6 @@ export default function SeatScreen() {
       </Button>
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <div className="grid-lines relative overflow-hidden rounded-[32px] bg-forest-deep p-6 text-ivory shadow-lift md:p-8">
-          <div aria-hidden="true" className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-brass/15 blur-3xl" />
           <div className="relative">
             <h1 id="seats-title" className="font-display text-3xl md:text-4xl">Choose your seats</h1>
             <p className="mt-1 text-ivory/60">Pick up to {MAX_SEATS}. Seats are held for you once you pick the first one.</p>
@@ -60,7 +59,7 @@ export default function SeatScreen() {
 
         <aside className="h-fit rounded-3xl border border-line bg-paper p-6 shadow-lift lg:sticky lg:top-24" aria-label="Booking summary">
           <p className="text-sm text-mute">{trip.operator} · {trip.cls}</p>
-          <h2 className="font-display text-2xl">{cityById(trip.from).name} → {cityById(trip.to).name}</h2>
+          <h2 className="font-display text-2xl">{placeById(trip.from).name} → {placeById(trip.to).name}</h2>
           <p className="mt-1 text-sm text-mute">{formatDate(trip.date)} · {formatClock(trip.departMin)}</p>
 
           <div className="my-5 min-h-[3.5rem] border-y border-line py-4">
@@ -70,9 +69,9 @@ export default function SeatScreen() {
               <ul className="flex flex-wrap gap-2" aria-label="Selected seats">
                 <AnimatePresence initial={false}>
                   {seats.map((key) => (
-                    <motion.li key={key} layout initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.6, opacity: 0 }}
-                      transition={{ type: 'spring', stiffness: 500, damping: 28 }}
-                      className="rounded-lg bg-brass-soft px-2.5 py-1 text-sm font-semibold text-brass-dark">{key}</motion.li>
+                    <motion.li key={key} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                      className="rounded-lg bg-brass-soft px-2.5 py-1 text-sm font-medium text-brass-dark">{key}</motion.li>
                   ))}
                 </AnimatePresence>
               </ul>

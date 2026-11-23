@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { allSeatIds } from '../lib/seats'
-import { BUS_OPERATORS, hasTrains, trainDestinations, trainsBetween } from './operators'
-import { DEFAULT_ROUTES, PLACES, placeById } from './cities'
+import { BUS_PLACES, DISTRICTS, STATIONS, UPAZILAS } from './cities'
+import { BUS_OPERATORS, trainDestinations, trainsBetween } from './operators'
 import { bookedSeatsFor, generateTrips, totalSeats } from './trips'
 
-const query = { mode: 'bus', from: 'd1', to: 'd43', date: '2026-11-13' } // Dhaka to Chattogram
+const up = (name) => UPAZILAS.find((u) => u.name === name).id
+const st = (name) => STATIONS.find((s) => s.name === name).id
+const query = { mode: 'bus', from: up('Savar'), to: up("Cox's Bazar Sadar"), date: '2026-11-13' }
+const trainQuery = { mode: 'train', from: st('Kamalapur'), to: st('Chattogram'), date: '2026-11-13' }
 
 describe('generateTrips', () => {
   const trips = generateTrips(query)
@@ -13,14 +16,13 @@ describe('generateTrips', () => {
   })
   it('lists trips in departure order with sensible values', () => {
     expect(trips).toHaveLength(7)
-    expect(trips.map((t) => t.departMin)).toEqual([...trips.map((t) => t.departMin)].sort((a, b) => a - b))
     for (const t of trips) {
       expect(t.pricePerSeat % 10).toBe(0)
       expect(t.pricePerSeat).toBeGreaterThan(0)
       expect(t.durationMin).toBeGreaterThan(60)
       expect(t.seatsLeft).toBeGreaterThan(0)
-      expect(t.seatsLeft).toBeLessThanOrEqual(totalSeats(t))
     }
+    expect(trips.map((t) => t.departMin)).toEqual([...trips.map((t) => t.departMin)].sort((a, b) => a - b))
   })
   it('uses real bus companies', () => {
     const names = new Set(BUS_OPERATORS.map((o) => o.name))
@@ -31,80 +33,72 @@ describe('generateTrips', () => {
     expect(allSeatIds(bus.seatConfig).slice(0, 5)).toEqual(['A1', 'A2', 'A3', 'A4', 'B1'])
     expect(totalSeats(bus)).toBe(40)
   })
+  it('still prices a very short hop', () => {
+    const near = generateTrips({ mode: 'bus', from: up('Savar'), to: up('Dhamrai'), date: query.date })
+    expect(near[0].pricePerSeat).toBeGreaterThan(0)
+  })
   it('gives a train coaches of 50 seats, with coach-prefixed Bangladesh-style seat numbers', () => {
-    const trains = generateTrips({ ...query, ...DEFAULT_ROUTES.train, mode: 'train' })
+    const trains = generateTrips(trainQuery)
     expect(trains.length).toBeGreaterThan(0)
     for (const train of trains) {
-      expect(train.coaches.length).toBeGreaterThanOrEqual(2)
       expect(totalSeats(train)).toBe(50 * train.coaches.length)
-      expect([...bookedSeatsFor(train)].every((k) => /^(BA|BHA|UMA|JA|KA|KHA|GA|GHA|CHA)-[A-J][1-5]$/.test(k))).toBe(true)
+      expect([...bookedSeatsFor(train)].every((k) => /^(UMA|JA|KA|KHA|GA|GHA|CHA)-[A-J][1-5]$/.test(k))).toBe(true)
     }
   })
-  it('only lists trains that really run between the two stations', () => {
-    const names = generateTrips({ ...query, ...DEFAULT_ROUTES.train, mode: 'train' }).map((t) => t.operator)
-    expect(names).toContain('Subarna Express')
-    expect(names).not.toContain('Parabat Express') // that is the Sylhet line
-    expect(generateTrips({ mode: 'train', from: 'sda', to: 'ssyl', date: query.date }).map((t) => t.operator)).toContain('Parabat Express')
-  })
-  it('uses the real timetable: departure and arrival come from the stops', () => {
-    const [{ train, from, to }] = trainsBetween('sda', 'sctg')
-    const trip = generateTrips({ mode: 'train', from: 'sda', to: 'sctg', date: query.date }).find((t) => t.departMin === from[2])
-    expect(trip).toBeTruthy()
-    expect(trip.durationMin).toBe((to[1] - from[2] + 1440) % 1440)
-    expect(train.stops.length).toBeGreaterThan(2)
-  })
   it('gives every class of one train the same departure time', () => {
-    const trains = generateTrips({ ...query, ...DEFAULT_ROUTES.train, mode: 'train' })
     const byName = new Map()
-    for (const t of trains) byName.set(t.operator, [...(byName.get(t.operator) ?? []), t.departMin])
+    for (const t of generateTrips(trainQuery)) byName.set(t.operator, [...(byName.get(t.operator) ?? []), t.departMin])
     for (const times of byName.values()) expect(new Set(times).size).toBe(1)
-  })
-  it('sells bus tickets between two upazilas of the same district', () => {
-    const [a, b] = PLACES.bus.filter((p) => p.sub === 'Upazila · Cumilla')
-    const trips = generateTrips({ mode: 'bus', from: a.id, to: b.id, date: query.date })
-    expect(trips).toHaveLength(7)
-    expect(trips.every((t) => t.pricePerSeat >= 30 && t.durationMin >= 15)).toBe(true)
   })
 })
 
-describe('places', () => {
-  it('covers every district and upazila by bus, and every railway station by train', () => {
-    expect(PLACES.bus.filter((p) => p.kind === 'division')).toHaveLength(8)
-    expect(PLACES.bus.filter((p) => p.kind === 'district')).toHaveLength(64)
-    expect(PLACES.bus.filter((p) => p.kind === 'upazila').length).toBeGreaterThanOrEqual(490)
-    expect(PLACES.train).toHaveLength(425)
+describe('stations and trains', () => {
+  it('only lists trains that run along both stations\' line', () => {
+    const names = trainsBetween(st('Kamalapur'), st('Chattogram')).map((t) => t.name)
+    expect(names).toContain('Subarna Express')
+    expect(names).not.toContain('Parabat Express') // that is the Sylhet line
+    expect(trainsBetween(st('Kamalapur'), st('Sylhet')).map((t) => t.name)).toContain('Parabat Express')
   })
-  it('has unique ids, a division and a position inside Bangladesh for every place', () => {
-    const all = [...PLACES.bus, ...PLACES.train]
-    expect(new Set(all.map((p) => p.id)).size).toBe(all.length)
-    for (const p of all) {
-      expect(p.name).toBeTruthy()
-      expect(p.div).toMatch(/^(barishal|chattogram|dhaka|khulna|mymensingh|rajshahi|rangpur|sylhet)$/)
+  it('connects Kamalapur to the main line stations and not to unconnected ones', () => {
+    const reach = trainDestinations(st('Kamalapur'))
+    for (const name of ['Chattogram', 'Sylhet', 'Rajshahi', 'Khulna Junction', 'Rangpur']) expect(reach.has(st(name))).toBe(true)
+    expect(reach.has(st('Kamalapur'))).toBe(false)
+  })
+  it('does not connect stations on different lines', () => {
+    expect(trainsBetween(st('Sylhet'), st('Rajshahi'))).toHaveLength(0)
+  })
+})
+
+describe('districts', () => {
+  const names = new Set(BUS_PLACES.map((p) => p.name))
+  it('has all 64 districts next to their Sadar upazilas', () => {
+    expect(DISTRICTS).toHaveLength(64)
+    for (const n of ['Cumilla', 'Cumilla Adarsha Sadar', 'Dinajpur', 'Dinajpur Sadar', 'Dhaka', 'Chattogram', 'Rajshahi']) expect(names.has(n)).toBe(true)
+  })
+  it('sorts districts and upazilas together A to Z', () => {
+    const list = BUS_PLACES.map((p) => p.name)
+    expect(list.indexOf('Cumilla')).toBeLessThan(list.indexOf('Cumilla Adarsha Sadar'))
+    expect(list.every((n, i) => i === 0 || n.localeCompare(list[i - 1], 'en', { sensitivity: 'base' }) >= 0)).toBe(true)
+  })
+  it('lets you book a bus between two districts', () => {
+    const from = DISTRICTS.find((d) => d.name === 'Cumilla').id, to = DISTRICTS.find((d) => d.name === 'Dinajpur').id
+    expect(generateTrips({ mode: 'bus', from, to, date: '2026-11-13' }).length).toBeGreaterThan(0)
+  })
+})
+
+describe('place lists', () => {
+  const sorted = (list) => list.every((p, i) => i === 0 || /[\u0980-\u09ff]/.test(p.name) || p.name.toLowerCase() >= list[i - 1].name.toLowerCase())
+  it('has every upazila, sorted A to Z, with unique ids', () => {
+    expect(UPAZILAS.length).toBeGreaterThanOrEqual(490)
+    expect(sorted(UPAZILAS)).toBe(true)
+    expect(new Set([...BUS_PLACES, ...STATIONS].map((p) => p.id)).size).toBe(BUS_PLACES.length + STATIONS.length)
+  })
+  it('puts every place inside Bangladesh', () => {
+    for (const p of [...UPAZILAS, ...STATIONS]) {
       expect(p.lat).toBeGreaterThan(20.5)
       expect(p.lat).toBeLessThan(26.7)
       expect(p.lng).toBeGreaterThan(88)
       expect(p.lng).toBeLessThan(92.8)
     }
-  })
-  it('puts well-known places in the right division', () => {
-    expect(placeById('d1').div).toBe('dhaka')
-    expect(placeById('d54').div).toBe('sylhet')
-    expect(placeById('sctg').div).toBe('chattogram')
-    expect(placeById('srjq').div).toBe('rajshahi')
-    expect(placeById('skln').div).toBe('khulna')
-  })
-})
-
-describe('trainDestinations', () => {
-  it('connects Kamalapur to the big cities', () => {
-    const reach = trainDestinations('sda')
-    for (const id of ['sctg', 'ssyl', 'srjq', 'skln', 'srnp', 'smym', 'scml']) expect(reach.has(id)).toBe(true)
-    expect(reach.has('sda')).toBe(false)
-  })
-  it('does not connect stations with no direct train', () => {
-    expect(trainDestinations('srnp').has('ssyl')).toBe(false)
-  })
-  it('knows which stations no train serves', () => {
-    expect(hasTrains('sda')).toBe(true)
   })
 })

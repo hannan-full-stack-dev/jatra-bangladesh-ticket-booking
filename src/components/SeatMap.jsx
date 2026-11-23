@@ -14,12 +14,12 @@ const Seat = memo(function Seat({ label, seatId, state, onToggle }) {
   return (
     <motion.button type="button" disabled={taken} aria-pressed={selected} onClick={() => onToggle(seatId)}
       aria-label={`Seat ${seatId}, ${taken ? 'taken' : selected ? 'selected' : 'available'}`}
-      whileTap={taken ? undefined : { scale: 0.9 }} animate={{ scale: selected ? 1.08 : 1, y: selected ? -2 : 0 }}
-      transition={{ type: 'spring', stiffness: 520, damping: 22 }}
+      whileTap={taken ? undefined : { scale: 0.96 }}
+      transition={{ duration: 0.12 }}
       style={taken ? { backgroundImage: HATCH } : undefined}
-      className={clsx('grid h-11 w-11 place-items-center rounded-b-md rounded-t-[14px] text-[11px] font-semibold transition-colors',
+      className={clsx('grid h-11 w-11 place-items-center rounded-b-md rounded-t-[14px] text-xs font-medium transition-colors',
         taken && 'cursor-not-allowed bg-ivory/5 text-ivory/25',
-        selected && 'bg-brass text-ink shadow-glow',
+        selected && 'bg-brass text-ink',
         state === 'available' && 'border border-ivory/25 bg-ivory/10 text-ivory/85 hover:bg-ivory/20')}>
       {label}
     </motion.button>
@@ -37,14 +37,14 @@ export default function SeatMap({ config, coach, booked, selected, onToggle }) {
 
   return (
     <div className="mx-auto w-fit rounded-[40px] border border-ivory/15 px-6 pb-5 pt-4">
-      <p className="mb-4 flex items-center justify-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-ivory/45">
+      <p className="mb-4 flex items-center justify-center gap-1.5 text-xs text-ivory/55">
         <ArrowUp className="h-3 w-3" aria-hidden="true" />Front{coach ? ` · Coach ${coach}` : ''}
       </p>
       <motion.div key={coach} variants={container} initial="hidden" animate="show" role="group" aria-label="Seat map">
         {grid.map(({ row, left, right }) => (
           <motion.div key={row} variants={rowVariants} className="mb-2 flex items-center justify-center gap-2">
             {left.map(cell)}
-            <span className="w-7 text-center text-[11px] font-semibold text-ivory/35" aria-hidden="true">{row}</span>
+            <span className="w-7 text-center text-xs text-ivory/45" aria-hidden="true">{row}</span>
             {right.map(cell)}
           </motion.div>
         ))}

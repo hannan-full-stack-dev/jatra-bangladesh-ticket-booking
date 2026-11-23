@@ -6,7 +6,7 @@ import Button from '@/components/Button'
 import { TextField } from '@/components/Field'
 import FareBreakdown from '@/components/FareBreakdown'
 import HoldRing from '@/components/HoldRing'
-import { cityById } from '@/data/cities'
+import { placeById } from '@/data/cities'
 import { useHoldTimer } from '@/hooks/useHoldTimer'
 import { createBooking } from '@/lib/booking'
 import { formatClock, formatDate, formatMoney } from '@/lib/format'
@@ -100,7 +100,7 @@ export default function CheckoutScreen() {
 
         <aside className="rounded-3xl border border-line bg-paper p-6 shadow-lift lg:sticky lg:top-24" aria-label="Order summary">
           <p className="text-sm text-mute">{trip.operator} · {trip.cls}</p>
-          <h2 className="font-display text-2xl">{cityById(trip.from).name} → {cityById(trip.to).name}</h2>
+          <h2 className="font-display text-2xl">{placeById(trip.from).name} → {placeById(trip.to).name}</h2>
           <p className="mt-1 text-sm text-mute">{formatDate(trip.date)} · {formatClock(trip.departMin)} · {seats.join(', ')}</p>
           <div className="my-5"><HoldRing remaining={remaining} /></div>
 

@@ -8,8 +8,8 @@ export default function Logo() {
         <circle cx="8" cy="22" r="2.4" fill="#F6F1E7" />
         <circle cx="24" cy="10" r="2.4" fill="#F6F1E7" />
       </svg>
-      <span className="font-display text-xl font-semibold tracking-tight">Jatra</span>
-      <span className="hidden text-sm font-semibold text-brass-dark sm:inline">যাত্রা</span>
+      <span className="font-display text-xl font-medium">Jatra</span>
+      <span className="hidden text-sm font-medium text-brass-dark sm:inline">যাত্রা</span>
     </span>
   )
 }

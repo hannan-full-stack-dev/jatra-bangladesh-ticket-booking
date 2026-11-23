@@ -1,16 +1,15 @@
 import { motion } from 'framer-motion'
 import { Plus, Printer } from 'lucide-react'
 import Button from '@/components/Button'
-import Confetti from '@/components/Confetti'
 import Qr from '@/components/Qr'
-import { cityById } from '@/data/cities'
+import { placeById } from '@/data/cities'
 import { formatClock, formatDate, formatMoney } from '@/lib/format'
 import { useBooking } from '@/state/BookingContext'
 
 function Detail({ label, children }) {
   return (
     <div>
-      <dt className="text-xs uppercase tracking-[0.14em] text-mute">{label}</dt>
+      <dt className="text-sm text-mute">{label}</dt>
       <dd className="mt-0.5 font-medium">{children}</dd>
     </div>
   )
@@ -25,23 +24,22 @@ export default function TicketScreen() {
   return (
     <section aria-labelledby="ticket-title" className="mx-auto max-w-xl">
       <div className="relative mb-8 flex flex-col items-center text-center">
-        <Confetti />
         <svg viewBox="0 0 52 52" className="h-16 w-16" aria-hidden="true">
           <motion.circle cx="26" cy="26" r="23" fill="none" stroke="#C8A24A" strokeWidth="3" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.7 }} />
           <motion.path d="M15 27l8 8 14-16" fill="none" stroke="#0F3D2E" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"
             initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ delay: 0.55, duration: 0.45 }} />
         </svg>
-        <h1 id="ticket-title" className="mt-4 font-display text-4xl tracking-tight">You’re all set</h1>
-        <p className="mt-1 text-mute">Your seats are confirmed. Show this ticket at boarding.</p>
+        <h1 id="ticket-title" className="mt-4 font-display text-4xl tracking-tight">Booking confirmed</h1>
+        <p className="mt-1 text-mute">Show this ticket at boarding</p>
       </div>
 
-      <div style={{ perspective: 1200 }}>
-        <motion.article initial={{ opacity: 0, y: 60, rotateX: -14 }} animate={{ opacity: 1, y: 0, rotateX: 0 }}
-          transition={{ type: 'spring', stiffness: 120, damping: 18, delay: 0.35 }}
+      <div>
+        <motion.article initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
           className="print-ticket relative rounded-3xl border border-line bg-paper shadow-lift">
           <div className="rounded-t-3xl bg-forest-deep px-6 py-5 text-ivory">
-            <p className="text-xs uppercase tracking-[0.18em] text-brass">{trip.mode === 'bus' ? 'Bus ticket' : 'Train ticket'} · {trip.operator}</p>
-            <p className="mt-2 font-display text-3xl">{cityById(trip.from).name} → {cityById(trip.to).name}</p>
+            <p className="text-sm text-brass">{trip.mode === 'bus' ? 'Bus ticket' : 'Train ticket'} · {trip.operator}</p>
+            <p className="mt-2 font-display text-3xl">{placeById(trip.from).name} → {placeById(trip.to).name}</p>
           </div>
 
           <dl className="grid grid-cols-2 gap-x-6 gap-y-5 px-6 py-6">
@@ -61,8 +59,8 @@ export default function TicketScreen() {
 
           <div className="flex items-center justify-between gap-4 px-6 py-6">
             <div>
-              <p className="text-xs uppercase tracking-[0.14em] text-mute">Booking ID</p>
-              <p className="font-mono text-2xl font-semibold tracking-wider">{booking.id}</p>
+              <p className="text-sm text-mute">Booking ID</p>
+              <p className="font-mono text-2xl font-medium tracking-wide">{booking.id}</p>
               <p className="mt-3 text-sm text-mute">Paid with {payment === 'bkash' ? 'bKash' : payment === 'nagad' ? 'Nagad' : 'card'}</p>
               <p className="font-display text-2xl tabular-nums">{formatMoney(price.total)}</p>
             </div>

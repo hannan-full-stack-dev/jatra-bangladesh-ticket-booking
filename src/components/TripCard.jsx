@@ -7,25 +7,17 @@ import { formatClock, formatDuration, formatMoney } from '@/lib/format'
 const AMENITIES = { ac: [Snowflake, 'Air conditioned'], wifi: [Wifi, 'Wi-Fi'], charge: [Plug, 'Charging port'], recline: [BedDouble, 'Reclining seats'] }
 
 /** The golden glow follows the pointer across the card. */
-function followPointer(e) {
-  const box = e.currentTarget.getBoundingClientRect()
-  e.currentTarget.style.setProperty('--mx', `${e.clientX - box.left}px`)
-  e.currentTarget.style.setProperty('--my', `${e.clientY - box.top}px`)
-}
-
 export default function TripCard({ trip, onSelect }) {
   const share = trip.seatsLeft / totalSeats(trip)
   const scarce = trip.seatsLeft <= 12
 
   return (
-    <article onMouseMove={followPointer}
-      className="group relative overflow-hidden rounded-2xl border border-line bg-paper p-5 shadow-lift transition-colors hover:border-brass/60">
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-        style={{ background: 'radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), rgba(200,162,74,.16), transparent 70%)' }} />
+    <article
+      className="relative overflow-hidden rounded-2xl border border-line bg-paper p-5 shadow-lift transition-colors hover:border-brass/60">
       <div className="relative grid items-center gap-5 md:grid-cols-[1.1fr_1.6fr_1fr]">
         <div>
           <h2 className="font-display text-xl">{trip.operator}</h2>
-          <p className="mt-1 inline-flex rounded-full bg-forest/10 px-2.5 py-0.5 text-xs font-semibold text-forest">{trip.cls}</p>
+          <p className="mt-1 inline-flex rounded-full bg-forest/10 px-2.5 py-0.5 text-xs font-medium text-forest">{trip.cls}</p>
           <ul className="mt-3 flex gap-2.5 text-mute" aria-label="Amenities">
             {trip.amenities.map((a) => {
               const [Icon, label] = AMENITIES[a]

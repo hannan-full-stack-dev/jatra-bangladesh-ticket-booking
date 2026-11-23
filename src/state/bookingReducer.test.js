@@ -1,21 +1,26 @@
 import { describe, expect, it } from 'vitest'
 import { createBooking } from '../lib/booking'
+import { DEFAULT_ROUTES, STATIONS, UPAZILAS, destinationsFor, placeById } from '../data/cities'
 import { bookingReducer, createInitialState } from './bookingReducer'
+
+const station = (name) => STATIONS.find((s) => s.name === name).id
 
 const trip = { id: 't1', pricePerSeat: 1000, coaches: [''], seatConfig: { rows: 2, layout: [2, 2] } }
 const run = (state, ...actions) => actions.reduce(bookingReducer, state)
 const none = new Set()
 
 describe('bookingReducer', () => {
-  it('searches only with two different cities', () => {
-    const same = { ...createInitialState(), to: 'd1' }
+  it('searches only with two different places', () => {
+    const same = { ...createInitialState(), to: createInitialState().from }
     expect(bookingReducer(same, { type: 'SEARCH' }).step).toBe('search')
     expect(bookingReducer(createInitialState(), { type: 'SEARCH' }).step).toBe('results')
   })
 
-  it('lets you pick any two places, and keeps them as you set them', () => {
-    const state = run(createInitialState(), { type: 'SET_FIELD', field: 'from', value: 'u1' }, { type: 'SET_FIELD', field: 'to', value: 'd45' })
-    expect([state.from, state.to]).toEqual(['u1', 'd45'])
+  it('moves the destination when a station has no train to it', () => {
+    const state = run(createInitialState(), { type: 'SET_MODE', mode: 'train' }, { type: 'SET_FIELD', field: 'from', value: station('Rajshahi') })
+    expect(state.from).toBe(station('Rajshahi'))
+    expect(destinationsFor('train', state.from).some((p) => p.id === state.to)).toBe(true)
+    expect(placeById(state.to).kind).toBe('station')
   })
 
   it('does not blank the booking-dependent screens: RESET clears the booking and trip', () => {
@@ -25,10 +30,11 @@ describe('bookingReducer', () => {
     expect(fresh.step).toBe('search')
   })
 
-  it('starts each mode on its own route, since buses and trains stop at different places', () => {
-    const state = run(createInitialState(), { type: 'SET_ROUTE', from: 'd1', to: 'd45', mode: 'bus' }, { type: 'SET_MODE', mode: 'train' })
-    expect([state.from, state.to]).toEqual(['sda', 'sctg'])
-    expect(bookingReducer(state, { type: 'SET_MODE', mode: 'bus' }).from).toBe('d1')
+  it('switches to that mode\'s default route when the mode changes', () => {
+    const state = run(createInitialState(), { type: 'SET_MODE', mode: 'train' })
+    expect({ from: state.from, to: state.to }).toEqual(DEFAULT_ROUTES.train)
+    expect(placeById(state.from).kind).toBe('station')
+    expect(placeById(run(state, { type: 'SET_MODE', mode: 'bus' }).from).kind).toBe('upazila')
   })
 
   it('starts the hold on the first seat and clears it with the last', () => {

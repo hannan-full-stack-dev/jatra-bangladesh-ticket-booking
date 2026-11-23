@@ -3,17 +3,12 @@
 @tailwind utilities;
 
 html { scroll-padding-top: 6rem; }
+/* Headlines, times and prices: a little heavier and tighter than the browser default. Utilities still override this. */
+@layer base { .font-display { font-weight: 600; letter-spacing: -0.02em; } }
 body { @apply bg-ivory font-sans text-ink antialiased; overflow-x: clip; }
 ::selection { background: #C8A24A; color: #14211B; }
 :focus-visible { outline: 2px solid #C8A24A; outline-offset: 2px; }
 input:focus-visible, select:focus-visible { outline: none; }
-
-.grid-lines {
-  background-image:
-    linear-gradient(rgba(246,241,231,.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(246,241,231,.05) 1px, transparent 1px);
-  background-size: 28px 28px;
-}
 
 /* Only the ticket is printed. */
 @media print {

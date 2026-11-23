@@ -2,7 +2,7 @@ import { distanceKm } from '../lib/geo'
 import { hashString, mulberry32 } from '../lib/random'
 import { allSeatIds, seatKey } from '../lib/seats'
 import { placeById } from './cities'
-import { BUS_OPERATORS, TRAIN_CLASSES, firstTrainBetween, trainsBetween } from './operators'
+import { BUS_OPERATORS, TRAIN_CLASSES, trainsBetween } from './operators'
 
 /** Bus and train names are real (see operators.js). Fares are about ৳4.6 per km by bus and ৳3.6 per km by train. */
 export const MODES = {
@@ -32,55 +32,37 @@ const departAt = (i, count, rng) => {
   return DAY_START + i * slot + Math.floor(rng() * Math.max((slot - 10) / 5, 1)) * 5
 }
 
-/** "Dhaka Ml" and "Betona Com" are how the timetable abbreviates them. */
-const trainLabel = (name) => name.replace(/ Ml$/, ' Mail').replace(/ Com(?= |$)/, ' Commuter')
-
-/**
- * Road or rail distance in km.
- *  - Train: the real distance along the railway, from the timetable, for the first direct train of the day.
- *  - Bus: an estimate (straight line between the two places x 1.25), because there is no road network in the app.
- * A road and a railway never follow the same line, so one pair of places has two different, honest distances.
- */
-export function routeKm(mode, from, to) {
-  if (mode === 'train') {
-    const direct = firstTrainBetween(from, to)
-    if (direct) return Math.max(1, Math.round(direct.to[3] - direct.from[3]))
-  }
-  return Math.max(2, distanceKm(placeById(from), placeById(to)))
-}
-
 export function generateTrips({ mode, from, to, date }) {
   const config = MODES[mode]
-  const km = routeKm(mode, from, to)
+  const km = Math.max(distanceKm(placeById(from), placeById(to)), 12) // very short hops still cost a minimum fare
   const rng = mulberry32(hashString(`${mode}|${from}|${to}|${date}`))
-  const minFare = mode === 'bus' ? 30 : 20
+  const travelTime = () => Math.round(((km / config.speedKmh) * 60 * (0.92 + rng() * 0.2)) / 5) * 5
 
   /** One row per bookable thing: a bus, or a train in one class. */
   let services
   if (mode === 'bus') {
-    const travelTime = () => Math.max(15, Math.round(((km / config.speedKmh) * 60 * (0.92 + rng() * 0.2)) / 5) * 5)
     services = Array.from({ length: config.count }, (_, i) => {
       const { name, cls, factor, amenities } = BUS_OPERATORS[Math.floor(rng() * BUS_OPERATORS.length)]
-      return { operator: name, cls, factor, amenities, coaches: [''], departMin: departAt(i, config.count, rng), durationMin: travelTime(), km }
+      return { operator: name, cls, factor, amenities, coaches: [''], departMin: departAt(i, config.count, rng), durationMin: travelTime() }
     })
   } else {
-    // Real trains with their real times. A train leaves once a day, so every class shares the departure and the journey time.
-    services = trainsBetween(from, to).flatMap(({ train, from: a, to: b }) => {
-      const departMin = a[2]
-      const durationMin = Math.max(5, (b[1] - a[2] + 1440) % 1440)
-      const legKm = Math.max(1, Math.round(b[3] - a[3]))
-      return train.classes.map((cls) => ({ operator: trainLabel(train.name), cls, ...TRAIN_CLASSES[cls], departMin, durationMin, km: legKm }))
+    // A train leaves once a day, so every class of that train shares the same departure and journey time.
+    const trains = trainsBetween(from, to)
+    services = trains.flatMap((train, i) => {
+      const departMin = departAt(i, trains.length, rng)
+      const durationMin = travelTime()
+      return train.classes.map((cls) => ({ operator: train.name, cls, ...TRAIN_CLASSES[cls], departMin, durationMin }))
     })
   }
 
-  return services.map(({ operator, cls, factor, amenities, coaches, departMin, durationMin, km: tripKm }, i) => {
+  return services.map(({ operator, cls, factor, amenities, coaches, departMin, durationMin }, i) => {
     const trip = {
       id: `${mode}-${from}-${to}-${date}-${i}`, mode, from, to, date,
       operator, cls, amenities,
-      departMin, durationMin, arriveMin: departMin + durationMin, km: tripKm,
-      pricePerSeat: Math.max(minFare, Math.round((tripKm * config.ratePerKm * factor) / 10) * 10),
-      coaches: coaches ?? [], seatConfig: config.seatConfig,
+      departMin, durationMin, arriveMin: departMin + durationMin,
+      pricePerSeat: Math.round((km * config.ratePerKm * factor) / 10) * 10,
+      coaches, seatConfig: config.seatConfig,
     }
     return { ...trip, seatsLeft: totalSeats(trip) - bookedSeatsFor(trip).size }
-  }).sort((x, y) => x.departMin - y.departMin)
+  })
 }
