@@ -1,95 +1,66 @@
 # Jatra (যাত্রা)
 
-Book intercity bus and train seats across Bangladesh. Search a route, see the seat map before you pay, and get a printable ticket.
+Book intercity bus and train seats across Bangladesh, with real bus companies and Bangladesh Railway trains. A frontend portfolio project: search, pick seats on a live seat map, pay, get a ticket.
 
-**Live demo:** https://jatra-bangladesh-ticket-booking.vercel.app/
+> This is a front-end demo. Bus company and train names are real, but departure times, fares, stops and seat availability are generated, and no payment is taken.
 
-<img width="760" height="470" alt="demo" src="https://github.com/user-attachments/assets/2d194775-09b1-4f4f-a681-a1ea935e4ea7" />
+## The problem
+Buying an intercity ticket in Bangladesh often means a counter queue, a phone call, or a clunky site where you cannot see which seats are left until you have paid. Jatra puts the seat map first.
 
+> Add your own research here: who you asked (2-3 people who travel often), what annoyed them, and what you changed because of it.
 
-> This is a front-end portfolio project. Bus company and train names are real, and so is the Bangladesh Railway timetable. Bus departure times, fares and seat availability are generated, and no payment is taken.
+## Flow
+Search (bus or train) → Trips (filter by time of day, sort by earliest / cheapest / fastest) → Seat map (up to 4 seats, 5-minute hold) → Details and payment (promo code `JATRA10`) → Ticket (printable).
 
-## Why I built it
-
-I wanted a project that has a real flow from start to finish, not a single screen. Ticket booking fits: you search, compare, pick a seat, hold it, pay and get a ticket, and each step has rules that can go wrong (seat limits, a hold that expires, a seat someone else took).
-
-The idea I wanted to try is **seat map first**. The seat map is the screen people care about most, so Jatra makes it the centre of the flow instead of the last step.
-
-I did not run user interviews for this project. The design choices below come from my own use of ticket sites and from thinking through what the booking rules need to be.
-
-## What it does
-
-- **Two modes.** By bus, pick any of 64 districts or 500+ upazilas. By train, pick any of 425 railway stations. Stations with a direct train are tagged.
-- **Real map.** Bangladesh is drawn from the real boundaries of its 8 divisions. Your two places sit at their real coordinates, the route draws itself, and a vehicle travels along it. By train the line passes through the real stops of the first direct train.
-- **Trips.** Filter by time of day, sort by earliest, cheapest or fastest.
-- **Seat map.** Bangladesh-style seats (`A1 A2 | A3 A4`, trains like `KA-A1`). Up to 4 seats, with a 5-minute hold shown as a countdown ring.
-- **Checkout.** Passenger details, a promo code (`JATRA10`), and a fare breakdown.
-- **Ticket.** A printable ticket with a QR code and a confetti burst.
-
-## Distance and time
-
-- **Train:** distance, departure and arrival come from the real Bangladesh Railway timetable, for the first direct train of the day.
-- **Bus:** the distance is an estimate (straight line × 1.25, shown with a ≈) because the app has no road network. Departure times are generated.
-- The preview panel and the first result card use the same trip, so the two never disagree.
-- A road and a railway never follow the same line, so one pair of places has two different distances. Dhaka to Chattogram is about 264 km by the road estimate and 295 km on the Parjatak line.
-
-## Tech
-
-React 18 · Vite · Tailwind CSS · Framer Motion · Vitest
-
-## Run it
-
+## Run
 ```bash
 npm install
 npm run dev
-npm test        # booking rules, place data and the route on the map
+npm test        # 26 tests for the booking rules
 ```
 
 ## Motion
-
 All motion is Framer Motion, and `MotionConfig reducedMotion="user"` switches movement off for people who ask for less motion.
+- Screens slide in the direction you are travelling (forward or back).
+- A map of all Bangladesh with every division named. The route draws itself, a vehicle travels along it, and the selected cities pulse.
+- Seat map rows cascade in; seats spring when chosen; the coach tab replays the cascade.
+- Fares count up and down instead of jumping; trip cards re-order smoothly when you sort or filter.
+- The seat hold is a countdown ring that turns red in the last minute.
+- The ticket enters with a spring, the check mark draws itself, and a short burst of confetti follows.
 
-- Screens slide in the direction you are travelling.
-- The route draws itself and the vehicle follows it.
-- Seat rows cascade in, and seats spring when chosen.
-- Fares count up and down instead of jumping, and trip cards re-order smoothly.
-- The hold ring turns red in the last minute.
+## Seats
+Bangladesh style: row letter plus seat number. A 2+2 bus is `A1 A2 | A3 A4`, then `B1 B2 | B3 B4`, up to row J. Train seats carry the coach, like `KA-A1`.
 
-## Decisions
-
-- **One reducer owns the flow.** Every step is a pure function, so rules like "max 4 seats", "hold starts on the first seat" and "cannot leave a finished ticket" are unit tested without a browser.
-- **Seeded data.** The same search always gives the same trips and the same taken seats, so the demo is predictable and the tests are stable.
-- **The hold stores a start time**, not a counter, so it stays correct if the tab is slow or hidden.
-- **Real boundaries, tested.** A test checks that every place sits inside its own division on the map, so a dot can never land in the wrong place. This caught several wrong coordinates in the data.
-- **Accessibility.** Seats are real buttons with `aria-pressed` and a spoken label, selection changes are announced, form errors move focus to the first invalid field, and colours keep readable contrast.
-- **Responsive.** On phones the total and Continue button stay in a bottom bar. On desktop the summary sticks beside the seat map.
-- **Own page transition.** Screens use a small hand-written transition in `App.jsx` instead of `AnimatePresence mode="wait"`, because a shared-layout animation (the sliding Bus/Train pill) could leave it waiting forever. The old screen now gets at most 600 ms to leave.
+## Notes on the page transition
+Screens use a small hand-written transition in `App.jsx`, not `AnimatePresence mode="wait"`. A shared-layout animation (the sliding pill on Bus/Train) could leave AnimatePresence waiting forever, so the next screen never appeared. Now the old screen gets at most 600 ms to leave, and keeps its old data while leaving.
 
 ## Structure
-
 ```
 src/
-  lib/         pure rules: seats, pricing, filters, validation, booking id, distance (all tested)
-  data/        places, train timetable and generated trips (seeded)
+  lib/         pure rules: seats, pricing, filters, validation, booking id (all tested)
+  data/        cities and generated trips (seeded, so a search always gives the same result)
   state/       one reducer for the whole booking flow, and its tests
   hooks/       useHoldTimer
-  components/  SeatMap, RouteArt, TripCard, PlacePicker, SegmentedControl, ...
+  components/  SeatMap, RouteArt, TripCard, SegmentedControl, AnimatedNumber, ...
   screens/     Search, Results, Seats, Checkout, Ticket
 ```
 
+## Decisions
+- **One reducer owns the flow.** Every step is a pure function, so rules like "max 4 seats", "hold starts on the first seat" and "cannot leave a finished ticket" are unit tested without a browser.
+- **Seeded data.** The same search always shows the same trips and the same taken seats, so the demo is predictable and the tests are stable.
+- **The seat hold stores a start time**, not a counter, so it stays correct if the tab is slow or hidden.
+- **Accessibility.** Seats are real buttons with `aria-pressed` and a spoken label; selection changes are announced; form errors move focus to the first invalid field; colors keep readable contrast.
+- **Responsive.** On phones the total and Continue button stay in a bottom bar; on desktop the summary sticks beside the seat map.
+
 ## Not built yet
+A real backend (trips, seat locking so two people cannot take the same seat, payments), accounts, and Bangla language switching.
 
-- A real backend: trips, seat locking so two people cannot take the same seat, and payments.
-- Real road distances and bus times (for example from a routing service).
-- Accounts, and Bangla language switching.
+## Map
+Division boundaries are real: administrative boundaries courtesy of [geoBoundaries.org](https://www.geoboundaries.org) (Runfola et al. 2020, https://doi.org/10.1371/journal.pone.0231866). `src/data/bangladeshMap.js` is generated from the `geoBoundaries-BGD-ADM1_simplified.geojson` file with `python3 scripts/build-bangladesh-map.py <file>`. Rerun it to change the level of detail (`TOLERANCE` in the script).
 
-## Data sources
-
-- Division boundaries: BBS / OCHA (CC BY 4.0)
-- Upazilas: geoBoundaries (CC BY 4.0)
-- Railway stations and timetable: [hussain-ahmed2/bd-railway-data](https://github.com/hussain-ahmed2/bd-railway-data) (MIT)
-
-## Author
-
-**Hannan Goljar**, Full Stack Developer, Dhaka
-[GitHub](https://github.com/hannan-full-stack-dev) · [LinkedIn](https://www.linkedin.com/in/hannan-full-stack-dev/) · hghannan2@gmail.com
+## Places
+- **Bus:** all 64 districts (for example Cumilla) and every upazila (544 areas from geoBoundaries ADM3, for example Cumilla Adarsha Sadar), searchable, sorted A to Z. A district sits where its Sadar upazila is; for Dhaka, Chattogram, Rajshahi, Jashore, Chapainawabganj and Moulvibazar, which have no upazila called Sadar, it sits at the city centre. Names that exist in several districts say which district they are near.
+- **Train:** railway stations from OpenStreetMap (metro stations left out), sorted A to Z. Stations with no train passing them are not offered.
+- Both lists live in `src/data/places.js`, generated by `python3 scripts/build-places.py ADM1.geojson ADM3.geojson export.geojson`.
+- Which train serves which station is an estimate: a station counts as on a line when it lies within 6 km of that line's route (`LINES` in `src/data/operators.js`). It is not Bangladesh Railway's stoppage list. Replace it with the official list when you have one.
+- Station data © OpenStreetMap contributors, ODbL.

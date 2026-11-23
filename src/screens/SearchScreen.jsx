@@ -4,6 +4,7 @@ import { ArrowLeftRight, ArrowRight, Bus, TrainFront } from 'lucide-react'
 import AnimatedNumber from '@/components/AnimatedNumber'
 import Button from '@/components/Button'
 import { TextField } from '@/components/Field'
+import PlaceZoom from '@/components/PlaceZoom'
 import PlacePicker from '@/components/PlacePicker'
 import RouteArt from '@/components/RouteArt'
 import SegmentedControl from '@/components/SegmentedControl'
@@ -92,6 +93,10 @@ export default function SearchScreen() {
       <motion.aside initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
         aria-label="Route preview" className="relative overflow-hidden rounded-3xl bg-forest-deep p-6 text-ivory shadow-lift">
         <RouteArt from={from} to={to} mode={mode} />
+        <div className="relative mt-4 grid grid-cols-2 gap-3">
+          <PlaceZoom place={placeById(from)} role="From" />
+          <PlaceZoom place={placeById(to)} role="To" />
+        </div>
         <dl className="relative mt-2 grid grid-cols-2 gap-4 border-t border-ivory/15 pt-4">
           <div>
             <dt className="text-sm text-ivory/60">Distance</dt>

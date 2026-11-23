@@ -1,80 +1,65 @@
 """
-Turns geoBoundaries ADM1 (divisions of Bangladesh) into src/data/bangladeshMap.js: simplified SVG paths.
-Usage: python3 scripts/build-bangladesh-map.py path/to/geoBoundaries-BGD-ADM1_simplified.geojson
+Turns geoBoundaries ADM2 (the 64 districts of Bangladesh) into src/data/bangladeshMap.js: simplified SVG paths.
+Usage: python3 scripts/build-bangladesh-map.py path/to/geoBoundaries-BGD-ADM2-all
+(the folder you get from unzipping the download; it needs the *_simplified.topojson file)
 Boundaries courtesy of geoBoundaries.org (Runfola et al. 2020, https://doi.org/10.1371/journal.pone.0231866)
+Run scripts/build-places.py first: districts get their id and division from src/data/places.js.
 """
-import json, math, sys
+import json, os, re, sys
+from geotopo import *
 
-SRC = sys.argv[1]
-IDS = {'Chittagong': 'chattogram', 'Dhaka': 'dhaka', 'Mymensingh': 'mymensingh', 'Rajshani': 'rajshahi',
-       'Rangpur': 'rangpur', 'Sylhet': 'sylhet', 'Khulna': 'khulna', 'Barisal': 'barishal'}
-WIDTH = 340
-TOLERANCE = 0.009      # degrees, about one kilometre
-MIN_AREA = 0.0015      # square degrees, drops specks, keeps Bhola, Hatiya, Sandwip, Moheshkhali
+TOL = 0.009           # degrees, about one kilometre: under one pixel on the 340 px wide map
+MIN_AREA = 0.012     # square degrees: drops the Sundarbans specks, keeps Bhola, Hatiya, Sandwip, Moheshkhali
+topo = json.load(open(find(sys.argv[1], 'topojson')))
+arcs = [simplify_arc(a, TOL) for a in decode_arcs(topo)]
 
-def dp(points, tol):
-    if len(points) < 3: return points
-    (x1, y1), (x2, y2) = points[0], points[-1]
-    dx, dy = x2 - x1, y2 - y1
-    norm = math.hypot(dx, dy) or 1e-12
-    best, idx = 0, 0
-    for i in range(1, len(points) - 1):
-        d = abs(dy * points[i][0] - dx * points[i][1] + x2 * y1 - y2 * x1) / norm
-        if d > best: best, idx = d, i
-    if best <= tol: return [points[0], points[-1]]
-    return dp(points[:idx + 1], tol)[:-1] + dp(points[idx:], tol)
+districts = {r[1]: r for r in places_const('DISTRICT_ROWS')}
+division_ids = json.loads(re.search(r'DIVISION_IDS = (\[.*\])', open(SRC_PLACES, encoding='utf-8').read()).group(1))
+rings_of, arc_owners = {}, {}                  # district id -> its rings; arc -> districts on either side
+for g in list(topo['objects'].values())[0]['geometries']:
+    name = district_name(g['properties']['shapeName'])
+    if name not in districts: sys.exit(f'No place for district {g["properties"]["shapeName"]!r}: add it to RENAMED')
+    did = districts[name][0]
+    kept = []
+    for poly in polygons(g):
+        outer = ring_points(poly[0], arcs)
+        if area(outer) < MIN_AREA: continue
+        kept.append([ring_points(r, arcs) for r in poly])
+        for r in poly:
+            for ref in r: arc_owners.setdefault(ref if ref >= 0 else ~ref, set()).add(did)
+    rings_of[did] = kept
+assert len(rings_of) == 64, len(rings_of)
 
-def simplify_ring(ring, tol):
-    # A ring starts and ends on the same point, so simplify its two halves separately.
-    ring = list(ring[:-1]) if ring[0] == ring[-1] else list(ring)
-    mid = len(ring) // 2
-    a = dp(ring[:mid + 1], tol)
-    b = dp(ring[mid:] + [ring[0]], tol)
-    out = a[:-1] + b
-    return out + [out[0]] if out[0] != out[-1] else out
+division = {r[0]: division_ids[r[4]] for r in districts.values()}
+def d_path(rings): return ''.join('M' + 'L'.join(' '.join(num(v) for v in px(*p)) for p in r[:-1]) + 'Z' for r in rings)
+paths = {did: d_path([r for poly in polys for r in poly]) for did, polys in rings_of.items()}
 
-def area(ring):
-    return abs(sum(ring[i][0] * ring[(i + 1) % len(ring)][1] - ring[(i + 1) % len(ring)][0] * ring[i][1] for i in range(len(ring)))) / 2
+# Border lines, each shared border once: country edge, division borders, district borders.
+mesh = {'country': [], 'division': [], 'district': []}
+for ref, owners in arc_owners.items():
+    pts = arcs[ref]
+    kind = 'country' if len(owners) == 1 else 'division' if len({division[o] for o in owners}) > 1 else 'district'
+    mesh[kind].append('M' + 'L'.join(' '.join(num(v) for v in px(*p)) for p in pts))
 
-def centroid(ring):
-    a = cx = cy = 0
-    for i in range(len(ring)):
-        x0, y0 = ring[i]; x1, y1 = ring[(i + 1) % len(ring)]
-        c = x0 * y1 - x1 * y0; a += c; cx += (x0 + x1) * c; cy += (y0 + y1) * c
-    a /= 2
-    return cx / (6 * a), cy / (6 * a)
-
-data = json.load(open(SRC))
-divisions = {}
-for f in data['features']:
-    g = f['geometry']
-    polys = g['coordinates'] if g['type'] == 'MultiPolygon' else [g['coordinates']]
-    rings = [simplify_ring([tuple(p[:2]) for p in poly[0]], TOLERANCE) for poly in polys]
-    rings = [r for r in rings if area(r) >= MIN_AREA and len(r) >= 4]
-    divisions[IDS[f['properties']['shapeName']]] = rings
-
-lngs = [p[0] for rs in divisions.values() for r in rs for p in r]
-lats = [p[1] for rs in divisions.values() for r in rs for p in r]
-pad = 0.05
-lng0, lng1, lat0, lat1 = min(lngs) - pad, max(lngs) + pad, min(lats) - pad, max(lats) + pad
-k = math.cos(math.radians((lat0 + lat1) / 2))          # a degree of longitude is shorter than one of latitude
-HEIGHT = round(WIDTH * (lat1 - lat0) / ((lng1 - lng0) * k))
-
-def px(p): return ((p[0] - lng0) / (lng1 - lng0) * WIDTH, (lat1 - p[1]) / (lat1 - lat0) * HEIGHT)
-def path(rings):
-    return ' '.join('M' + ' L'.join('%.1f %.1f' % px(p) for p in r[:-1] if True) + 'Z' for r in rings)
-
-paths = {i: path(rs) for i, rs in divisions.items()}
 labels = {}
-for i, rs in divisions.items():
-    big = max(rs, key=area); labels[i] = [round(v, 3) for v in centroid(big)]
+for did, polys in rings_of.items():
+    big = max((poly[0] for poly in polys), key=area)
+    c = centroid(big)
+    if not inside(c[0], c[1], big): c = big[len(big) // 2]
+    labels[did] = [round(v, 1) for v in px(*c)]
 
 out = f"""// Generated by scripts/build-bangladesh-map.py. Do not edit by hand.
 // Administrative boundaries courtesy of geoBoundaries.org (Runfola et al. 2020).
-export const MAP = {{ width: {WIDTH}, height: {HEIGHT}, lng: [{lng0:.3f}, {lng1:.3f}], lat: [{lat0:.3f}, {lat1:.3f}] }}
+export const MAP = {{ width: {WIDTH}, height: {HEIGHT}, lng: [{LNG[0]}, {LNG[1]}], lat: [{LAT[0]}, {LAT[1]}] }}
 
-/** Division outlines as SVG paths in map coordinates, keyed by division id. */
-export const DIVISION_PATHS = {json.dumps(paths, indent=2)}
+/** The 64 districts as SVG paths in map coordinates, keyed by district id (the same ids as in places.js). */
+export const DISTRICT_PATHS = {json.dumps(paths, separators=(',', ':'))}
+
+/** Border lines, every shared border once: the edge of the country, between divisions, between districts. */
+export const BORDERS = {json.dumps({k: ''.join(v) for k, v in mesh.items()}, separators=(',', ':'))}
+
+/** Where a district's name goes, in map coordinates. */
+export const DISTRICT_LABELS = {json.dumps(labels, separators=(',', ':'))}
 """
-open('src/data/bangladeshMap.js', 'w').write(out)
-print('size KB', len(out) // 1024, 'map', WIDTH, HEIGHT); print(labels)
+open(os.path.join(os.path.dirname(__file__), '..', 'src', 'data', 'bangladeshMap.js'), 'w', encoding='utf-8').write(out)
+print('size KB', len(out) // 1024, {k: len(mesh[k]) for k in mesh}, 'districts', len(paths))
